@@ -1,0 +1,37 @@
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+bower_components/
+venv/
+
+# Directorios de compilación
+dist/
+build/
+out/
+
+# Archivos de log
+*.log
+
+# Archivos temporales
+*.tmp
+*.swp
+
+# Archivos de configuración de IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos de cobertura de pruebas
+coverage/
