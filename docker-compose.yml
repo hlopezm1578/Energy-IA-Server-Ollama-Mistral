@@ -1,0 +1,30 @@
+version: "3"
+
+services:
+  postgres:
+    build: ./postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - energyia-net
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: vectordb
+  
+  # redis:
+  #   image: redis:latest
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+networks:
+  energyia-net:
+    driver: bridge
+volumes:
+  # redis_data:
+  # redis2_data:
+  energyia-vol:
+    driver: local

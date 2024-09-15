@@ -1,0 +1,80 @@
+# Postgres
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: mypostgres:latest
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "admin"
+            - name: POSTGRES_PASSWORD
+              value: "admin"
+            - name: POSTGRES_DB
+              value: "vectordb"
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-sql
+          hostPath:
+            path: /path/on/host/postgres/init.sql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5433
+      targetPort: 5432
+# # Redis
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: redis
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: redis
+#   template:
+#     metadata:
+#       labels:
+#         app: redis
+#     spec:
+#       containers:
+#         - name: redis
+#           image: redis:latest
+#           volumeMounts:
+#             - name: redis-data
+#               mountPath: /data
+#       volumes:
+#         - name: redis-data
+#           emptyDir: {}
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: redis
+# spec:
+#   selector:
+#     app: redis
+#   ports:
+#     - port: 6379
+#       targetPort: 6379      

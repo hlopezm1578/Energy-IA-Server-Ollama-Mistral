@@ -4,3 +4,5 @@ langchain-huggingface
 langchain-ollama
 tqdm
 chromadb
+pgvector
+psycopg2
