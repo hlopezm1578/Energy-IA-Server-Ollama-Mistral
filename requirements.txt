@@ -6,3 +6,5 @@ tqdm
 chromadb
 pgvector
 psycopg2
+fastapi[standard]
+redis

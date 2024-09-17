@@ -14,17 +14,17 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: vectordb
   
-  # redis:
-  #   image: redis:latest
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 networks:
   energyia-net:
     driver: bridge
 volumes:
-  # redis_data:
-  # redis2_data:
+  redis_data:
+  redis2_data:
   energyia-vol:
     driver: local
