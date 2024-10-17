@@ -103,10 +103,11 @@ async def get_conversation(conversation_id: str):
     logger.info(f"Retrieving initial id {conversation_id}")
     existing_conversation_json = r.get(conversation_id)
     if existing_conversation_json:
+        logger.info(f"Exisiting conversation found for id {conversation_id}")
         existing_conversation = json.loads(existing_conversation_json)
-        return existing_conversation
     else:
        existing_conversation = {"conversation": [{"role": "asistente", "content": "Hola, ¿en que puedo ayudarlo?"}]}
+    return existing_conversation
     
 @app.post("/api/conversation/{conversation_id}")
 async def service2(conversation_id: str, conversation: Conversation):

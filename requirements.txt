@@ -7,4 +7,5 @@ chromadb
 pgvector
 psycopg2
 fastapi[standard]
+uvicorn[standard]
 redis
