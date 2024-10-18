@@ -9,3 +9,7 @@ psycopg2
 fastapi[standard]
 uvicorn[standard]
 redis
+SQLAlchemy
+psycopg2-binary
+pydantic
+alembic
