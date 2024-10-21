@@ -13,3 +13,5 @@ SQLAlchemy
 psycopg2-binary
 pydantic
 alembic
+httpx
+aiofiles

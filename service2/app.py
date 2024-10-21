@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import services,models,schemas
 from db import get_db,engine
 from sqlalchemy.orm import Session
+import httpx
 
 app = FastAPI()
 app.add_middleware(
@@ -12,6 +13,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+SERVICE1_URL = "http://localhost:8000"
 
 @app.get("/asistentes/", response_model=list[schemas.Asistente])
 def get_all_asistentes(db: Session = Depends(get_db)):
@@ -41,3 +44,12 @@ def delete_asistente(asistente_id: int, db: Session = Depends(get_db)):
     if asistente is None:
         raise HTTPException(status_code=404, detail="Asistente not found")
     return asistente
+
+@app.post("/asistentes/call-training")
+async def call_training(request:schemas.TrainingRequest):
+    url = f"{SERVICE1_URL}/training"  # URL del endpoint en service1
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, json=request.model_dump())
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Error calling training service")
+        return response.json()

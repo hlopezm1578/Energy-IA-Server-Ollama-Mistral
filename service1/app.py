@@ -11,6 +11,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import AIMessage, HumanMessage,SystemMessage,AIMessageChunk
 from fastapi.responses import StreamingResponse
+from training import Training
 
 import redis
 import json
@@ -75,6 +76,11 @@ class Message(BaseModel):
 
 class Conversation(BaseModel):
     conversation: List[Message]
+class TrainingRequest(BaseModel):
+    asistente_id: int
+    departamento: str
+    chunks: int
+    overlap: int
 
 def create_messages(conversation):
     return [ROLE_CLASS_MAP[message["role"]](content=message["content"]) for message in conversation]
@@ -97,6 +103,13 @@ def read_root():
 def read_root(prompt: str):
     resp =  chat.invoke(prompt)
     return {"respuseta": resp.content}
+
+@app.post("/training")
+async def run_training(request:TrainingRequest):
+    training_instance = Training()
+    await training_instance.crear_archivo_inicial(request.asistente_id, request.departamento)
+    await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
+    return {"result": "Training completed"}
 
 @app.get("/api/conversation/{conversation_id}")
 async def get_conversation(conversation_id: str):

@@ -41,6 +41,11 @@ class Asistente(AsistenteBase):
 
     class Config:
         from_attribute = True
+class TrainingRequest(BaseModel):
+    asistente_id: int
+    departamento: str
+    chunks: int
+    overlap: int
 
 
 
