@@ -42,3 +42,11 @@ def soft_delete_asistente(db: Session, asistente_id: int):
         db.refresh(asistente)
         return asistente
     return None
+
+def change_status_asistente(db: Session, asistente_id: int, estado_id: int):
+    asistente = db.query(Asistente).filter(Asistente.id == asistente_id).first()
+    if asistente:
+        asistente.estado_id = estado_id
+    db.commit()
+    db.refresh(asistente)
+    return asistente

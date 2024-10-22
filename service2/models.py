@@ -21,10 +21,19 @@ class Asistente(BaseEntity):
     overlap = Column(Integer,nullable=False)
     estado_id = Column(Integer,ForeignKey('Estados.id') ,nullable=False)
     estado = relationship("Estado", back_populates="asistentes")
+    documentos = relationship("Documento", back_populates="asistente")  
 
 class Estado(Base):
     __tablename__ = 'Estados'
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String,nullable=False)
+    asistentes = relationship("Asistente", order_by=Asistente.id, back_populates="estado")
 
-Estado.asistentes = relationship("Asistente", order_by=Asistente.id, back_populates="estado")
+class Documento(Base):
+    __tablename__ = 'Documentos'
+    id = Column(Integer, primary_key=True, index=True)
+    nombre_archivo = Column(String,nullable=False)
+    nombre_documento = Column(String,nullable=False)
+    url_archivo = Column(String,nullable=False)
+    asistente_id = Column(Integer,ForeignKey('Asistentes.id') ,nullable=False)
+    asistente = relationship("Asistente", back_populates="documentos")

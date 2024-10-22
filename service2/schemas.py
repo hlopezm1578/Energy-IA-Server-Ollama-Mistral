@@ -46,6 +46,14 @@ class TrainingRequest(BaseModel):
     departamento: str
     chunks: int
     overlap: int
+class Documento(BaseModel):
+    id: int
+    nombre_archivo: str
+    nombre_documento: str
+    url_archivo: str
+    asistente_id: int
+    class Config:
+        from_attribute = True
 
 
 

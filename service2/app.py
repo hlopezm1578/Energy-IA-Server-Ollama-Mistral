@@ -53,3 +53,9 @@ async def call_training(request:schemas.TrainingRequest):
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail="Error calling training service")
         return response.json()
+@app.put("/asistentes/{asistente_id}/change-status")
+async def change_status(asistente_id: int, estado_id: int, db: Session = Depends(get_db)):
+    asistente = services.change_status_asistente(db, asistente_id, estado_id)
+    if asistente is None:
+        raise HTTPException(status_code=404, detail="Asistente not found")
+    return asistente        
