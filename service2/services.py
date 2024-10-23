@@ -1,7 +1,7 @@
-from models import Asistente
+from models import Asistente,Documento
 from sqlalchemy.orm import Session
-from schemas import AsistenteCreate,AsistenteUpdate
-from datetime import datetime
+from schemas import AsistenteCreate,AsistenteUpdate,DocumentoCreate
+from fastapi import UploadFile
 
 def create_asistente(db: Session, data: AsistenteCreate):
     asistente_instance = Asistente(**data.model_dump())
@@ -50,3 +50,19 @@ def change_status_asistente(db: Session, asistente_id: int, estado_id: int):
     db.commit()
     db.refresh(asistente)
     return asistente
+
+def create_documento(db: Session, documento: DocumentoCreate):
+    db_documento = Documento(
+        nombre_archivo=documento.nombre_archivo,
+        nombre_documento=documento.nombre_documento,
+        url_archivo=documento.url_archivo,
+        asistente_id=documento.asistente_id
+    )
+    db.add(db_documento)
+    db.commit()
+    db.refresh(db_documento)
+    return db_documento
+
+def get_documentos_by_asistente_id(db: Session, asistente_id: int):
+    return db.query(Documento).filter(Documento.asistente_id == asistente_id).all()
+

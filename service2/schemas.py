@@ -47,13 +47,25 @@ class TrainingRequest(BaseModel):
     chunks: int
     overlap: int
 class Documento(BaseModel):
-    id: int
     nombre_archivo: str
     nombre_documento: str
     url_archivo: str
     asistente_id: int
     class Config:
         from_attribute = True
+
+class DocumentoCreate(BaseModel):
+    nombre_archivo: str
+    nombre_documento: str
+    url_archivo: str
+    asistente_id: int
+    class Config:
+        from_attribute = True
+class PostDocRequest(BaseModel):
+    asistente_id: int
+    path:str        
+
+
 
 
 

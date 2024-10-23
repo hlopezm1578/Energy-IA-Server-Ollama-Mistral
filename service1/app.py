@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_ollama import ChatOllama
 from typing import List
@@ -16,6 +16,9 @@ from training import Training
 import redis
 import json
 import logging
+import os
+import aiofiles
+import uuid
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,6 +85,10 @@ class TrainingRequest(BaseModel):
     chunks: int
     overlap: int
 
+class PostDocRequest(BaseModel):
+    asistente_id: int
+    path:str
+
 def create_messages(conversation):
     return [ROLE_CLASS_MAP[message["role"]](content=message["content"]) for message in conversation]
 
@@ -111,6 +118,25 @@ async def run_training(request:TrainingRequest):
     await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
     return {"result": "Training completed"}
 
+@app.post("/documento")
+async def run_training(path:str,file: UploadFile = File(...)):
+    try:
+        file_location = path
+        print(file_location)
+        random_filename = f"{uuid.uuid4()}{os.path.splitext(file.filename)[1]}"
+        full_path = os.path.join(file_location, random_filename)
+        # Verificar si el directorio existe, si no, crearlo
+        if not os.path.exists(os.path.dirname(file_location)):
+            os.makedirs(os.path.dirname(file_location), exist_ok=True)
+
+        async with aiofiles.open(full_path, "wb") as buffer:
+            while content := await file.read(1024):  # Leer el archivo en bloques de 1024 bytes
+                await buffer.write(content)
+        return {"result": random_filename}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=f"Permission denied: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/api/conversation/{conversation_id}")
 async def get_conversation(conversation_id: str):
     logger.info(f"Retrieving initial id {conversation_id}")

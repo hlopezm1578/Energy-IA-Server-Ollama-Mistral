@@ -1,8 +1,9 @@
-from fastapi import FastAPI,Depends,HTTPException
+from fastapi import FastAPI,Depends,HTTPException,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
-import services,models,schemas
-from db import get_db,engine
+import services,schemas
+from db import get_db
 from sqlalchemy.orm import Session
+from typing import List
 import httpx
 
 app = FastAPI()
@@ -53,9 +54,43 @@ async def call_training(request:schemas.TrainingRequest):
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail="Error calling training service")
         return response.json()
+    
 @app.put("/asistentes/{asistente_id}/change-status")
 async def change_status(asistente_id: int, estado_id: int, db: Session = Depends(get_db)):
     asistente = services.change_status_asistente(db, asistente_id, estado_id)
     if asistente is None:
         raise HTTPException(status_code=404, detail="Asistente not found")
-    return asistente        
+    return asistente
+
+@app.post("/asistentes/contexto/{asistente_id}")
+async def create_documento(asistente_id:int,file: UploadFile = File(...), db: Session = Depends(get_db)):    
+    asistente = services.get_asistente_by_id(db, asistente_id)
+    if asistente is None:
+        raise HTTPException(status_code=404, detail="Asistente not found")
+    path = f"./DATA/asistente_{asistente_id}"
+    request = schemas.PostDocRequest(asistente_id=asistente_id,path=path)
+    url = f"{SERVICE1_URL}/documento?path={path}"  # URL del endpoint en service1
+    async with httpx.AsyncClient() as client:
+        fileToSave = {'file': (file.filename, file.file, file.content_type)}
+        response = await client.post(url,files=fileToSave, json=request.model_dump())
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Error calling training service")
+        
+        response_data = response.json()
+        documento_create =  schemas.DocumentoCreate(
+            asistente_id=asistente_id,
+            url_archivo=path,
+            nombre_archivo=response_data['result'],
+            nombre_documento=file.filename,)
+        print(documento_create)
+        documento = services.create_documento(db,documento_create)
+        return documento
+
+@app.get("/asistentes/{asistente_id}/documentos", response_model=List[schemas.Documento])
+async def read_documentos(asistente_id: int, db: Session = Depends(get_db)):
+    documentos = services.get_documentos_by_asistente_id(db, asistente_id)
+    if not documentos:
+        raise HTTPException(status_code=404, detail="No documents found for the given asistente_id")
+    return documentos
+
+
