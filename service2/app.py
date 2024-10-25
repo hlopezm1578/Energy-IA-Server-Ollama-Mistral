@@ -1,10 +1,12 @@
 from fastapi import FastAPI,Depends,HTTPException,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import services,schemas
 from db import get_db
 from sqlalchemy.orm import Session
 from typing import List
 import httpx
+import aiohttp
 
 app = FastAPI()
 app.add_middleware(
@@ -20,6 +22,10 @@ SERVICE1_URL = "http://localhost:8000"
 @app.get("/asistentes/", response_model=list[schemas.Asistente])
 def get_all_asistentes(db: Session = Depends(get_db)):
     return services.get_asistente(db)
+
+@app.get("/asistentes-enlinea/", response_model=list[schemas.Asistente])
+def get_all_asistentes(db: Session = Depends(get_db)):
+    return services.get_asistentes_enlinea(db)
 
 @app.get("/asistentes/{asistente_id}", response_model=schemas.Asistente)
 def get_asistente(asistente_id: int, db: Session = Depends(get_db)):
@@ -90,7 +96,24 @@ async def create_documento(asistente_id:int,file: UploadFile = File(...), db: Se
 async def read_documentos(asistente_id: int, db: Session = Depends(get_db)):
     documentos = services.get_documentos_by_asistente_id(db, asistente_id)
     if not documentos:
-        raise HTTPException(status_code=404, detail="No documents found for the given asistente_id")
+        #raise HTTPException(status_code=404, detail="No documents found for the given asistente_id")
+        return []
     return documentos
+
+@app.get("/asistentes/documentos/{documento_id}", response_model=schemas.Documento)
+async def download_documento(documento_id: int, db: Session = Depends(get_db)):
+    documento = services.get_documento_by_id(db, documento_id)
+    if not documento:
+        raise HTTPException(status_code=404, detail="Document not found for the given asistente_id and documento_id")
+    return documento
+
+@app.delete("/asistentes/documentos/{documento_id}", response_model=schemas.Documento)
+async def delete_documento(documento_id: int, db: Session = Depends(get_db)):
+    documento = services.get_documento_by_id(db, documento_id)
+    if not documento:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    services.delete_documento(db, documento_id)
+    return documento
 
 

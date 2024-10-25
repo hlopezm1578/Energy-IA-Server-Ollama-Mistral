@@ -47,6 +47,7 @@ class TrainingRequest(BaseModel):
     chunks: int
     overlap: int
 class Documento(BaseModel):
+    id: int
     nombre_archivo: str
     nombre_documento: str
     url_archivo: str

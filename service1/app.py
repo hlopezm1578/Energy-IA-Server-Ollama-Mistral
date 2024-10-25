@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException,Query
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_ollama import ChatOllama
 from typing import List
@@ -28,7 +28,7 @@ chat = ChatOllama(model="mistral",temperature=0)
 
 embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
-COLLECTION_NAME = "vectordb_bienestar"
+COLLECTION_NAME = "vectordb_10"
 
 vectorstore = PGVector(
     connection_string=CONNECTION_STRING,
@@ -38,6 +38,7 @@ vectorstore = PGVector(
 
 retriever = vectorstore.as_retriever()
 chat = ChatOllama(model="mistral",temperature=0,stream=True)
+
 rephrase_template = """Dada la siguiente conversación y una pregunta de seguimiento,
 reformule la pregunta de seguimiento para que sea una pregunta independiente, en su idioma original..
 
@@ -49,8 +50,8 @@ Pregunta independiente:"""
 REPHRASE_TEMPLATE = PromptTemplate.from_template(rephrase_template)
 rephrase_chain = REPHRASE_TEMPLATE | chat | StrOutputParser()
 
-template = """Como un asistente del departamento de Bienestar del Ministerio de energia, 
-Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, basándose únicamente en el siguiente contexto:
+template = """Como un asistente del departamento de Bienestar, 
+Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, si no hay informacion en el contexto responde No tengo informacion, basándose únicamente en el siguiente contexto:
 
 {context}
 
@@ -118,8 +119,15 @@ async def run_training(request:TrainingRequest):
     await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
     return {"result": "Training completed"}
 
+@app.post("/training-model")
+async def run_training(request:TrainingRequest):
+    training_instance = Training()
+    await training_instance.delete_previous_data(request.asistente_id)
+    await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
+    return {"result": "Training completed"}
+
 @app.post("/documento")
-async def run_training(path:str,file: UploadFile = File(...)):
+async def upload_documento(path:str,file: UploadFile = File(...)):
     try:
         file_location = path
         print(file_location)
@@ -137,6 +145,27 @@ async def run_training(path:str,file: UploadFile = File(...)):
         raise HTTPException(status_code=403, detail=f"Permission denied: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documento/download/")
+async def download_file(file_path: str,filename: str = Query(..., description="Nombre del archivo para la descarga")):
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    async def file_iterator(file_path):
+        async with aiofiles.open(file_path, 'rb') as file:
+            while content := await file.read(1024):
+                yield content
+
+    return StreamingResponse(file_iterator(file_path), media_type='application/octet-stream', headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+@app.delete("/documento")
+async def delete_documento(file_path: str):
+    # Eliminar el archivo físico
+    file_path = file_path  # Asumiendo que el documento tiene un atributo file_path
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return {"result": "Archivo eliminado"}
+
 @app.get("/api/conversation/{conversation_id}")
 async def get_conversation(conversation_id: str):
     logger.info(f"Retrieving initial id {conversation_id}")

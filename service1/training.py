@@ -14,6 +14,18 @@ class Training:
         contenido = f"Soy un asistente virtual del departamento de {departamento}, estoy para responder a sus consultas"
         async with aiofiles.open(ruta_archivo, "w") as archivo:
             await archivo.write(contenido)
+    
+    async def delete_previous_data(self,asistente_id):
+        embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
+        COLLECTION_NAME = f"vectordb_{asistente_id}"
+        vectorstore = PGVector(
+        connection_string=CONNECTION_STRING,
+        embedding_function=embedding_function,
+        collection_name=COLLECTION_NAME,
+        )
+        vectorstore.delete_collection()
+
     async def proceso(self,asistente_id,chunk,overlap):
         loader = DirectoryLoader(
         f"./DATA/asistente_{asistente_id}", glob="**/*.txt", loader_cls=Utf8TextLoader, show_progress=True

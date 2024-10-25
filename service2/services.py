@@ -1,7 +1,7 @@
 from models import Asistente,Documento
 from sqlalchemy.orm import Session
 from schemas import AsistenteCreate,AsistenteUpdate,DocumentoCreate
-from fastapi import UploadFile
+from sqlalchemy import and_
 
 def create_asistente(db: Session, data: AsistenteCreate):
     asistente_instance = Asistente(**data.model_dump())
@@ -12,6 +12,10 @@ def create_asistente(db: Session, data: AsistenteCreate):
 
 def get_asistente(db: Session):
     return db.query(Asistente).filter(Asistente.active==True).order_by(Asistente.id).all()
+
+def get_asistentes_enlinea(db: Session):
+    return db.query(Asistente).filter(and_(Asistente.active==True,Asistente.estado_id == 3)).order_by(Asistente.id).all()
+
 
 def get_asistente_by_id(db: Session, asistente_id: int):
     return db.query(Asistente).filter(Asistente.id == asistente_id).first()
@@ -65,4 +69,13 @@ def create_documento(db: Session, documento: DocumentoCreate):
 
 def get_documentos_by_asistente_id(db: Session, asistente_id: int):
     return db.query(Documento).filter(Documento.asistente_id == asistente_id).all()
+
+def get_documento_by_id(db: Session, documento_id: int):
+    return db.query(Documento).filter(Documento.id == documento_id).first()
+
+def delete_documento(db: Session, documento_id: int):
+    documento = db.query(Documento).filter(Documento.id == documento_id).first()
+    if documento:
+        db.delete(documento)
+        db.commit()
 
