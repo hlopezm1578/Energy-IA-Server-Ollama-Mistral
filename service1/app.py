@@ -24,49 +24,49 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 r = redis.Redis(host='localhost', port=6379, db=0)
-chat = ChatOllama(model="mistral",temperature=0)
 
-embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
-COLLECTION_NAME = "vectordb_10"
+def initialize_chat_system(asistente_id:str,departamento:str,nombre:str):
+    embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
+    COLLECTION_NAME = f"vectordb_{asistente_id}"
 
-vectorstore = PGVector(
+    vectorstore = PGVector(
     connection_string=CONNECTION_STRING,
     embedding_function=embedding_function,
     collection_name=COLLECTION_NAME,
-)
+    )
+    retriever = vectorstore.as_retriever()
+    chat = ChatOllama(model="mistral",temperature=0,stream=True)
 
-retriever = vectorstore.as_retriever()
-chat = ChatOllama(model="mistral",temperature=0,stream=True)
+    rephrase_template = """Dada la siguiente conversación y una pregunta de seguimiento,
+    reformule la pregunta de seguimiento para que sea una pregunta independiente, en su idioma original..
 
-rephrase_template = """Dada la siguiente conversación y una pregunta de seguimiento,
-reformule la pregunta de seguimiento para que sea una pregunta independiente, en su idioma original..
+    Historial de chat:
+    {chat_history}
+    Entrada de seguimiento: {question}
+    Pregunta independiente:"""
 
-Historial de chat:
-{chat_history}
-Entrada de seguimiento: {question}
-Pregunta independiente:"""
+    REPHRASE_TEMPLATE = PromptTemplate.from_template(rephrase_template)
+    rephrase_chain = REPHRASE_TEMPLATE | chat | StrOutputParser()
 
-REPHRASE_TEMPLATE = PromptTemplate.from_template(rephrase_template)
-rephrase_chain = REPHRASE_TEMPLATE | chat | StrOutputParser()
+    template = f"""Eres un asistente virtual llamado Felix del departamento de {departamento} de {nombre}, y estas aquí para ayudar a los usuarios con sus preguntas.
+    Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, si no hay informacion en el contexto responde No tengo informacion, basándose únicamente en el siguiente contexto:
 
-template = """Como un asistente del departamento de Bienestar, 
-Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, si no hay informacion en el contexto responde No tengo informacion, basándose únicamente en el siguiente contexto:
+    {{context}}
 
-{context}
+    Pregunta: {{question}}
+    """
+    ANSWER_PROMPT = ChatPromptTemplate.from_template(template)
 
-Pregunta: {question}
-"""
-ANSWER_PROMPT = ChatPromptTemplate.from_template(template)
+    retrieval_chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | ANSWER_PROMPT
+        | chat
+        | StrOutputParser()
+    )
 
-retrieval_chain = (
-    {"context": retriever, "question": RunnablePassthrough()}
-    | ANSWER_PROMPT
-    | chat
-    | StrOutputParser()
-)
-
-final_chain = rephrase_chain | retrieval_chain
+    final_chain = rephrase_chain | retrieval_chain
+    return final_chain
 
 ROLE_CLASS_MAP = {
     "asistente": AIMessage,
@@ -106,11 +106,6 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
-
-@app.get("/test")
-def read_root(prompt: str):
-    resp =  chat.invoke(prompt)
-    return {"respuseta": resp.content}
 
 @app.post("/training")
 async def run_training(request:TrainingRequest):
@@ -202,16 +197,16 @@ def serialize_aimessagechunk(chunk):
             f"Object of type {type(chunk).__name__} is not correctly formatted for serialization"
         )
 
-async def generate_chat_responses(message):
+async def generate_chat_responses(message,asistente_id:str,departamento:str,nombre:str):
     yield "event: start\ndata: Stream iniciado\n\n"
-
+    final_chain = initialize_chat_system(asistente_id,departamento,nombre)
     async for chunk in final_chain.astream(message):
             content = chunk.replace("\n", "<br>")
             yield f"data: {content}\n\n"
     yield "event: end\ndata: Stream Finalizado\n\n"
 
 @app.get("/api/chat_stream")
-async def chat_stream(conversation_id: str):
+async def chat_stream(conversation_id: str,asistente_id:str, departamento:str,nombre:str):
     logger.info(f"Conversation with ID {conversation_id}")
     existing_conversation_json = r.get(conversation_id)
     if existing_conversation_json:
@@ -225,4 +220,8 @@ async def chat_stream(conversation_id: str):
         "question": query,
         "chat_history": conversation,
     }
-    return StreamingResponse(generate_chat_responses(message=message), media_type="text/event-stream")
+    return StreamingResponse(generate_chat_responses(
+        message=message,
+        asistente_id=asistente_id,
+        departamento=departamento,
+        nombre=nombre), media_type="text/event-stream")

@@ -26,6 +26,7 @@ def update_asistente(db: Session, asistente_id: int, data: AsistenteUpdate):
     if asistente:
         for key, value in data.model_dump().items():
             setattr(asistente, key, value)
+        asistente.estado_id = 2    
     db.commit()
     db.refresh(asistente)
     return asistente
