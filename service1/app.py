@@ -1,9 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException,Query
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_ollama import ChatOllama
 from typing import List
 from pydantic import BaseModel
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.pgvector import PGVector
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.prompts.prompt import PromptTemplate
@@ -12,6 +10,13 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import AIMessage, HumanMessage,SystemMessage,AIMessageChunk
 from fastapi.responses import StreamingResponse
 from training import Training
+from dotenv import load_dotenv
+#from langchain_openai import OpenAIEmbeddings
+#from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
+
+load_dotenv()
 
 import redis
 import json
@@ -25,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 
-def initialize_chat_system(asistente_id:str,departamento:str,nombre:str):
+def initialize_chat_system(asistente_id:str,departamento:str,entidad:str):
+    #embedding_function = OpenAIEmbeddings()
     embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
     CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
     COLLECTION_NAME = f"vectordb_{asistente_id}"
@@ -36,6 +42,7 @@ def initialize_chat_system(asistente_id:str,departamento:str,nombre:str):
     collection_name=COLLECTION_NAME,
     )
     retriever = vectorstore.as_retriever()
+    #chat = ChatOpenAI(temperature=0,stream=True)
     chat = ChatOllama(model="mistral",temperature=0,stream=True)
 
     rephrase_template = """Dada la siguiente conversación y una pregunta de seguimiento,
@@ -49,8 +56,10 @@ def initialize_chat_system(asistente_id:str,departamento:str,nombre:str):
     REPHRASE_TEMPLATE = PromptTemplate.from_template(rephrase_template)
     rephrase_chain = REPHRASE_TEMPLATE | chat | StrOutputParser()
 
-    template = f"""Eres un asistente virtual llamado Felix del departamento de {departamento} de {nombre}, y estas aquí para ayudar a los usuarios con sus preguntas.
-    Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, si no hay informacion en el contexto responde No tengo informacion, basándose únicamente en el siguiente contexto:
+    template = f"""Eres un asistente virtual del departamento de {departamento} de {entidad}, y estas aquí para ayudar a los usuarios con sus preguntas.
+    Responde la pregunta lo mas completa posible, no menciones el contexto ni el origen de los datos, 
+    si no hay informacion en el contexto responde 'No tengo información sobre esa consulta', 
+    basándose únicamente en el siguiente contexto:
 
     {{context}}
 
@@ -109,16 +118,21 @@ def read_root():
 
 @app.post("/training")
 async def run_training(request:TrainingRequest):
-    training_instance = Training()
-    await training_instance.crear_archivo_inicial(request.asistente_id, request.departamento)
-    await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
-    return {"result": "Training completed"}
+    try:
+        training_instance = Training()
+        await training_instance.crear_archivo_inicial(request.asistente_id, request.departamento)
+        await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
+        return {"result": "Training completed"}
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/training-model")
 async def run_training(request:TrainingRequest):
     training_instance = Training()
     await training_instance.delete_previous_data(request.asistente_id)
     await training_instance.proceso(request.asistente_id, request.chunks, request.overlap)
+    await training_instance.procesoPdf(request.asistente_id, request.chunks, request.overlap)
     return {"result": "Training completed"}
 
 @app.post("/documento")
@@ -197,16 +211,16 @@ def serialize_aimessagechunk(chunk):
             f"Object of type {type(chunk).__name__} is not correctly formatted for serialization"
         )
 
-async def generate_chat_responses(message,asistente_id:str,departamento:str,nombre:str):
+async def generate_chat_responses(message,asistente_id:str,departamento:str,entidad:str):
     yield "event: start\ndata: Stream iniciado\n\n"
-    final_chain = initialize_chat_system(asistente_id,departamento,nombre)
+    final_chain = initialize_chat_system(asistente_id,departamento,entidad)
     async for chunk in final_chain.astream(message):
             content = chunk.replace("\n", "<br>")
             yield f"data: {content}\n\n"
     yield "event: end\ndata: Stream Finalizado\n\n"
 
 @app.get("/api/chat_stream")
-async def chat_stream(conversation_id: str,asistente_id:str, departamento:str,nombre:str):
+async def chat_stream(conversation_id: str,asistente_id:str, departamento:str,entidad:str):
     logger.info(f"Conversation with ID {conversation_id}")
     existing_conversation_json = r.get(conversation_id)
     if existing_conversation_json:
@@ -224,4 +238,4 @@ async def chat_stream(conversation_id: str,asistente_id:str, departamento:str,no
         message=message,
         asistente_id=asistente_id,
         departamento=departamento,
-        nombre=nombre), media_type="text/event-stream")
+        entidad=entidad), media_type="text/event-stream")

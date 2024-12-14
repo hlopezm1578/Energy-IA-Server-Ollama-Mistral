@@ -16,6 +16,7 @@ class BaseEntity(Base):
 class Asistente(BaseEntity):
     __tablename__ = 'Asistentes'
     nombre = Column(String,nullable=False)
+    entidad = Column(String,nullable=False)
     departamento = Column(String,nullable=False)
     chunks = Column(Integer,nullable=False)
     overlap = Column(Integer,nullable=False)

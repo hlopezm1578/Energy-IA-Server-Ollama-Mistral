@@ -36,7 +36,10 @@ def get_asistente(asistente_id: int, db: Session = Depends(get_db)):
 
 @app.post("/asistentes/", response_model=schemas.Asistente)
 def create_asistente(asistente: schemas.AsistenteCreate, db: Session = Depends(get_db)):
-    return services.create_asistente(db, asistente)
+    try:
+        return services.create_asistente(db, asistente)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.put("/asistentes/{asistente_id}", response_model=schemas.AsistenteCreate)
 def update_asistente(asistente_id: int, asistente: schemas.AsistenteCreate, db: Session = Depends(get_db)):

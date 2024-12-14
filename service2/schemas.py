@@ -10,6 +10,7 @@ class Estado(BaseModel):
 
 class AsistenteBase(BaseModel):
     nombre: str
+    entidad: str
     departamento: str
     chunks: int
     overlap: int
