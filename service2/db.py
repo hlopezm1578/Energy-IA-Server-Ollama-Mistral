@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker,declarative_base
 
-CONNECTION_STRING = "postgresql://admin:admin@127.0.0.1:5433/energyia_db"
+CONNECTION_STRING = "postgresql://admin:admin@127.0.0.1:5433/rag_db"
 
 engine = create_engine(CONNECTION_STRING)
 

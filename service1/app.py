@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 #from langchain_openai import OpenAIEmbeddings
 #from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from langchain_huggingface import HuggingFaceEmbeddings
+#from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaEmbeddings
 
 load_dotenv()
 
@@ -32,7 +33,8 @@ r = redis.Redis(host='localhost', port=6379, db=0)
 
 def initialize_chat_system(asistente_id:str,departamento:str,entidad:str):
     #embedding_function = OpenAIEmbeddings()
-    embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    #embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    embedding_function = OllamaEmbeddings(model="nomic-embed-text")
     CONNECTION_STRING = "postgresql+psycopg2://admin:admin@127.0.0.1:5433/vectordb"
     COLLECTION_NAME = f"vectordb_{asistente_id}"
 
@@ -43,7 +45,7 @@ def initialize_chat_system(asistente_id:str,departamento:str,entidad:str):
     )
     retriever = vectorstore.as_retriever()
     #chat = ChatOpenAI(temperature=0,stream=True)
-    chat = ChatOllama(model="mistral",temperature=0,stream=True)
+    chat = ChatOllama(model="mistal",temperature=0,stream=True)
 
     rephrase_template = """Dada la siguiente conversación y una pregunta de seguimiento,
     reformule la pregunta de seguimiento para que sea una pregunta independiente, en su idioma original..
